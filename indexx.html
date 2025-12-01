@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🚗 IoT Autić Kontrole</title>
+    <style>
+        /* CSS Varijable za jednostavno mijenjanje boja */
+        :root {
+            --bg-color: #1a1a2e; /* Tamna pozadina */
+            --card-bg: #2c2c47; /* Pozadina kartice/kontejnera */
+            --text-color: #e4e4f0;
+            --primary-color: #00bcd4; /* Svijetlo plava */
+            --stop-color: #e91e63; /* Crvena za stop */
+            --shadow-light: rgba(0, 0, 0, 0.2);
+        }
+
+        /* Globalni stilovi i pozadina */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* Glavni kontejner */
+        .container {
+            width: 100%;
+            max-width: 450px;
+            padding: 30px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px var(--shadow-light), 0 0 0 10px rgba(255, 255, 255, 0.05);
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 1.8em;
+            margin-bottom: 30px;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Kontejner za navigacijske tipke (D-pad stil) */
+        #controls {
+            display: grid;
+            grid-template-areas:
+                ". forward ."
+                "left stop-btn right"
+                ". backward .";
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        /* Osnovni stil tipki */
+        button {
+            padding: 18px 25px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease-in-out;
+            color: var(--text-color);
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            background-color: #404060; /* Tamnija boja tipki */
+        }
+
+        /* Specifične pozicije u gridu */
+        #forward { grid-area: forward; }
+        #backward { grid-area: backward; }
+        #left { grid-area: left; }
+        #right { grid-area: right; }
+        #stop {
+            grid-area: stop-btn;
+            background-color: var(--stop-color);
+        }
+
+        /* Hover efekti */
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Aktivni (pritisnuti) efekti */
+        button:active, button.active-command {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5) inset;
+            opacity: 0.9;
+        }
+
+        /* Boje za navigacijske tipke */
+        #forward, #backward, #left, #right {
+            background-color: var(--primary-color);
+            color: var(--bg-color);
+        }
+        
+        /* Stop tipka specifični stil */
+        #stop:hover {
+            background-color: #c01850; /* Tamnija nijansa pri hoveru */
+        }
+
+        /* Prikaz trenutne komande */
+        #currentCommand {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 500;
+            color: var(--text-color);
+            border-left: 5px solid var(--primary-color);
+        }
+        
+        /* Dodatni stil za bolji prikaz komande */
+        #currentCommand strong {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        /* Medijski upiti za mobilne uređaje */
+        @media (max-width: 500px) {
+            .container {
+                padding: 20px;
+                border-radius: 15px;
+            }
+            #controls {
+                gap: 10px;
+            }
+            button {
+                padding: 15px 20px;
+                font-size: 1.1em;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Kontrola Autića 🤖</h2>
+
+        <div id="controls">
+            <button id="forward">⬆ NAPRIJED</button>
+            <button id="left">⬅ LIJEVO</button>
+            <button id="right">➡ DESNO</button>
+            <button id="backward">⬇ NAZAD</button>
+            <button id="stop">🛑 STOP</button>
+        </div>
+
+        <div id="currentCommand">
+            Trenutna komanda: <strong>Čekanje...</strong>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-database.js";
+
+        // Firebase config (Ostavljeno nepromijenjeno)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAdQTc7K4aL8FIehZNFMhX1CSryetgFTtY",
+            authDomain: "iot-autic.firebaseapp.com",
+            databaseURL: "https://iot-autic-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "iot-autic",
+            storageBucket: "iot-autic.firebasestorage.app",
+            messagingSenderId: "908803210370",
+            appId: "1:908803210370:web:fa47131ddbd08b9e2d489b",
+            measurementId: "G-DXBGNYY3W7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const commandRef = ref(db, "car/command");
+
+        // Funkcija za slanje komande
+        function sendCommand(action) {
+            set(commandRef, action);
+            updateButtonStyles(action); // Pozovi funkciju za stiliziranje
+        }
+
+        // Nova funkcija: Ažuriranje stilova pritisnutih tipki
+        function updateButtonStyles(currentAction) {
+            Object.values(buttons).forEach(btn => btn.classList.remove('active-command'));
+
+            if (buttons[currentAction]) {
+                buttons[currentAction].classList.add('active-command');
+            }
+        }
+
+        // Dugmad
+        const buttons = {
+            forward: document.getElementById("forward"),
+            backward: document.getElementById("backward"),
+            left: document.getElementById("left"),
+            right: document.getElementById("right"),
+            stop: document.getElementById("stop")
+        };
+
+        // Dodavanje event listenera za "drži dugme"
+        Object.keys(buttons).forEach(key => {
+            const btn = buttons[key];
+
+            // Miš
+            btn.addEventListener("mousedown", () => sendCommand(key));
+            btn.addEventListener("mouseup", () => sendCommand("stop"));
+            btn.addEventListener("mouseleave", () => sendCommand("stop"));
+
+            // Touch uređaji
+            btn.addEventListener("touchstart", (e) => { e.preventDefault(); sendCommand(key); });
+            btn.addEventListener("touchend", () => sendCommand("stop"));
+        });
+
+        // Real-time prikaz trenutne komande
+        const currentCommandDisplay = document.getElementById("currentCommand").querySelector("strong");
+        onValue(commandRef, (snapshot) => {
+            const cmd = snapshot.val();
+            currentCommandDisplay.innerText = cmd ? cmd.toUpperCase() : "Čekanje...";
+            updateButtonStyles(cmd); // Ažuriraj stil na osnovu Firebase-a
+        });
+
+        // Opcionalno: tastatura (WASD)
+        document.addEventListener("keydown", (e) => {
+            let action = null;
+            switch(e.key.toLowerCase()) {
+                case "w": action = "forward"; break;
+                case "s": action = "backward"; break;
+                case "a": action = "left"; break;
+                case "d": action = "right"; break;
+            }
+            if (action) {
+                sendCommand(action);
+            }
+        });
+        document.addEventListener("keyup", (e) => {
+            // Osiguraj da se stop komanda šalje samo ako je otpuštena jedna od kontrolnih tipki
+            if (["w", "s", "a", "d"].includes(e.key.toLowerCase())) {
+                sendCommand("stop");
+            }
+        });
+
+    </script>
+</body>
+</html>
